@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+  <title>LifeGame</title>
+  <meta name="theme-color" content="#0d0f14">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="LifeGame">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/icon-180.png">
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+  <main id="view"></main>
+  <div id="mini" hidden></div>
+  <nav class="tabbar">
+    <button data-tab="today"><span>🏠</span>Vandaag</button>
+    <button data-tab="training"><span>🏋️</span>Training</button>
+    <button data-tab="agenda"><span>📅</span>Afspraken</button>
+    <button data-tab="stats"><span>📊</span>Stats</button>
+    <button data-tab="profile"><span>🏆</span>Profiel</button>
+  </nav>
+  <div id="workout"></div>
+  <div id="modal"></div>
+  <div id="toasts"></div>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
