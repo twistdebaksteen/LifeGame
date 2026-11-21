@@ -269,6 +269,15 @@ input:focus, select:focus { border-color: var(--accent); }
 .d-ex { padding: 8px 0; border-bottom: 1px solid var(--line); }
 .d-ex ol { margin: 4px 0 0; padding-left: 22px; color: #c7ccd6; font-size: 14px; font-variant-numeric: tabular-nums; }
 
+/* lichaam / gewicht */
+.weigh { display: grid; grid-template-columns: 1.4fr 1fr 1fr auto; gap: 6px; margin-top: 10px; }
+.weigh input { padding: 8px 6px; min-width: 0; text-align: center; }
+.weigh .chip-btn { flex: none; }
+.cm-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.cm-grid div { background: var(--card2); border-radius: 10px; padding: 6px 8px; }
+.cm-grid small { display: block; color: var(--muted); font-size: 11px; } .cm-grid b { font-variant-numeric: tabular-nums; }
+.m-hist { margin-top: 10px; } .m-hist summary { cursor: pointer; }
+
 /* toasts */
 #toasts { position: fixed; top: calc(var(--safe-t) + 10px); left: 0; right: 0; display: flex; flex-direction: column; align-items: center; gap: 6px; z-index: 60; pointer-events: none; }
 .toast { background: #262b36; padding: 9px 16px; border-radius: 99px; font-weight: 600; box-shadow: 0 8px 24px #0009; animation: drop .3s ease; transition: opacity .4s, transform .4s; }

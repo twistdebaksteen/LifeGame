@@ -1,5 +1,5 @@
 // Import van een Hevy CSV-export (Profiel → Instellingen → Export & Import → Export Workouts).
-import { state, allExercises, uid } from './store.js';
+import { state, allExercises, uid, keyOf, setMeasurement } from './store.js';
 import { slug, guessExercise } from './data.js';
 
 export function parseCSV(text) {
@@ -93,4 +93,29 @@ export function importHevy(text) {
   }
   state.workouts.sort((a, b) => a.start - b.start);
   return { added, skipped, sets, created };
+}
+
+export function csvKind(text) {
+  const head = (parseCSV(text.split(/\r?\n/)[0])[0] || []).map(h => h.trim().toLowerCase());
+  if (head.includes('exercise_title')) return 'workouts';
+  if (head.includes('date') && head.some(h => h.endsWith('_cm') || h === 'weight_kg')) return 'measurements';
+  return null;
+}
+
+// Hevy "Export Measurements": date, weight_kg, fat_percent, neck_cm, ...
+export function importHevyMeasurements(text) {
+  const rows = parseCSV(text);
+  const head = rows[0].map(h => h.trim().toLowerCase());
+  const di = head.indexOf('date');
+  let count = 0;
+  for (const r of rows.slice(1)) {
+    const t = parseHevyDate(r[di]);
+    if (!t) continue;
+    const vals = {};
+    head.forEach((h, i) => { if (i !== di) { const v = n(r[i]); if (v != null) vals[h] = v; } });
+    if (!Object.keys(vals).length) continue;
+    setMeasurement(keyOf(new Date(t)), vals);
+    count++;
+  }
+  return { count };
 }

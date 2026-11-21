@@ -5,7 +5,7 @@ import { computeAll, questsFor, previousSets, liveWorkoutXp, setIsPr, setValid, 
 import { evalBadges } from './badges.js';
 import { barChart, lineChart, hBars } from './charts.js';
 import { bodyMap } from './body.js';
-import { importHevy } from './csv.js';
+import { importHevy, importHevyMeasurements, csvKind } from './csv.js';
 
 const $ = s => document.querySelector(s);
 const BODY = ['chest', 'back', 'traps', 'shoulders', 'biceps', 'triceps', 'forearms', 'abs', 'lowerback', 'glutes', 'quads', 'hamstrings', 'calves'];
@@ -269,6 +269,7 @@ function copyExercises(list) {
 const COLS = {
   weight: [['kg', 'KG'], ['reps', 'REPS']],
   bw: [['kg', '+KG'], ['reps', 'REPS']],
+  assisted: [['kg', 'HULP'], ['reps', 'REPS']],
   time: [['sec', 'SEC']],
   cardio: [['km', 'KM'], ['min', 'MIN']],
 };
@@ -277,7 +278,7 @@ function viewWorkout() {
   const A = S.state.active;
   const live = liveWorkoutXp(A, G);
   let vol = 0;
-  for (const ex of A.exercises) { const e = getExercise(ex.exId); for (const s of ex.sets) if (s.done && setValid(e.kind, s) && (e.kind === 'weight' || e.kind === 'bw')) vol += setVolume(e.kind, s, S.state.settings.bodyweight); }
+  for (const ex of A.exercises) { const e = getExercise(ex.exId); for (const s of ex.sets) if (s.done && setValid(e.kind, s) && e.kind !== 'time' && e.kind !== 'cardio') vol += setVolume(e.kind, s, S.state.settings.bodyweight); }
   const rest = S.state.rest;
 
   return `
@@ -422,13 +423,13 @@ function viewStats() {
   if (ui.statsEx) {
     const e = getExercise(ui.statsEx), b = G.bests[ui.statsEx];
     const h = b.history.slice(-20);
-    const metric = e.kind === 'weight' ? ['e1rm', 'Geschatte 1RM (kg)'] : e.kind === 'bw' ? ['maxReps', 'Meeste reps in één set'] : e.kind === 'time' ? ['maxSec', 'Langste set (sec)'] : ['km', 'Afstand (km)'];
+    const metric = e.kind === 'weight' ? ['e1rm', 'Geschatte 1RM (kg)'] : e.kind === 'bw' || e.kind === 'assisted' ? ['maxReps', 'Meeste reps in één set'] : e.kind === 'time' ? ['maxSec', 'Langste set (sec)'] : ['km', 'Afstand (km)'];
     const data = h.map(x => ({ label: S.fmtShort(x.date), value: Math.round(x[metric[0]] * 10) / 10 }));
     exBlock = `
       <select class="sel" data-statsex>${withHist.map(x => `<option value="${x.id}" ${x.id === ui.statsEx ? 'selected' : ''}>${esc(x.e.name)} (${x.n}×)</option>`).join('')}</select>
       <div class="tiles three">
         ${e.kind === 'weight' ? `<div class="tile"><b>${fmtNum(b.maxKg, 1)}</b><small>zwaarste kg</small></div><div class="tile"><b>${fmtNum(b.e1rm, 1)}</b><small>beste 1RM (geschat)</small></div>` : ''}
-        ${e.kind === 'bw' ? `<div class="tile"><b>${b.maxReps}</b><small>meeste reps</small></div>` : ''}
+        ${e.kind === 'bw' || e.kind === 'assisted' ? `<div class="tile"><b>${b.maxReps}</b><small>meeste reps</small></div>` : ''}
         ${e.kind === 'time' ? `<div class="tile"><b>${b.maxSec}s</b><small>langste</small></div>` : ''}
         <div class="tile"><b>${b.history.length}</b><small>keer gedaan</small></div>
       </div>
@@ -448,6 +449,7 @@ function viewStats() {
     <div class="tile"><b>${c.complimentsTotal}</b><small>complimenten</small></div>
     <div class="tile"><b>${c.bestStreak}</b><small>beste streak</small></div>
   </div>
+  ${weightCard()}
   <section class="card"><div class="card-h"><h3>XP per dag</h3><span class="muted small">14 dagen</span></div>${barChart(xpData, { color: 'var(--gold)', unit: 'XP' })}</section>
   <section class="card"><div class="card-h"><h3>Oefening-progressie</h3></div>${exBlock}</section>
   <section class="card"><div class="card-h"><h3>Trainingsvolume per week</h3><span class="muted small">kg</span></div>${barChart(volWeek, { unit: 'kg', labelEvery: 2 })}</section>
@@ -456,6 +458,36 @@ function viewStats() {
   <section class="card"><div class="card-h"><h3>🥩 Eiwit</h3><span class="muted small">gram</span></div>${barChart(prot, { color: 'var(--protein)', goal: st.proteinGoal, unit: 'g', labelEvery: 2 })}</section>
   <section class="card"><div class="card-h"><h3>😴 Slaap</h3><span class="muted small">uren</span></div>${barChart(sleep, { color: 'var(--sleep)', goal: st.sleepGoal, unit: 'uur', labelEvery: 2 })}</section>
   <section class="card"><div class="card-h"><h3>💬 Complimenten per week</h3></div>${barChart(compWeek, { color: 'var(--social)', labelEvery: 2 })}</section>`;
+}
+
+function weightCard() {
+  const ms = S.state.measurements;
+  const ws = ms.filter(m => m.weight_kg > 0);
+  const last = ws[ws.length - 1], first = ws[0];
+  const fat = [...ms].reverse().find(m => m.fat_percent > 0);
+  const CM = { neck_cm: 'Nek', shoulder_cm: 'Schouders', chest_cm: 'Borst', left_bicep_cm: 'Biceps L', right_bicep_cm: 'Biceps R', left_forearm_cm: 'Onderarm L', right_forearm_cm: 'Onderarm R', abdomen_cm: 'Buik', waist_cm: 'Taille', hips_cm: 'Heupen', left_thigh_cm: 'Bovenbeen L', right_thigh_cm: 'Bovenbeen R', left_calf_cm: 'Kuit L', right_calf_cm: 'Kuit R' };
+  const latestCm = {};
+  for (const m of ms) for (const k of Object.keys(CM)) if (m[k] > 0) latestCm[k] = m[k];
+  const data = ws.slice(-30).map(m => ({ label: S.fmtShort(m.date), value: m.weight_kg }));
+  const diff = last && first && last !== first ? last.weight_kg - first.weight_kg : null;
+  return `<section class="card">
+    <div class="card-h"><h3>⚖️ Lichaam</h3><span class="muted small">${ws.length} wegingen</span></div>
+    <div class="tiles three">
+      <div class="tile"><b>${last ? fmtNum(last.weight_kg, 1) : '–'}</b><small>kg${last ? ' · ' + S.fmtShort(last.date) : ''}</small></div>
+      <div class="tile"><b>${diff == null ? '–' : (diff > 0 ? '+' : '') + fmtNum(diff, 1)}</b><small>kg sinds start</small></div>
+      <div class="tile"><b>${fat ? fmtNum(fat.fat_percent, 1) + '%' : '–'}</b><small>vetpercentage</small></div>
+    </div>
+    ${data.length > 1 ? lineChart(data, { color: 'var(--green)', unit: 'kg', labelEvery: Math.ceil(data.length / 6) }) : ''}
+    <div class="weigh">
+      <input type="date" data-weightdate value="${esc(ui.weightDate || todayKey())}" max="${todayKey()}" aria-label="Datum">
+      <input id="weight-in" type="text" inputmode="decimal" placeholder="kg">
+      <input id="fat-in" type="text" inputmode="decimal" placeholder="vet %">
+      <button class="chip-btn primary" data-a="saveWeight">Opslaan</button>
+    </div>
+    ${Object.keys(latestCm).length ? `<h4 class="grp">Laatste omtrekken (cm)</h4><div class="cm-grid">${Object.entries(latestCm).map(([k, v]) => `<div><small>${CM[k]}</small><b>${fmtNum(v, 1)}</b></div>`).join('')}</div>` : ''}
+    ${ws.length ? `<details class="m-hist"><summary class="small muted">Alle metingen</summary><ul class="mini-list">${[...ms].reverse().map(m => `<li><span class="muted">${fmtDate(m.date)}</span> ${m.weight_kg ? fmtNum(m.weight_kg, 1) + ' kg' : ''}${m.fat_percent ? ' · ' + fmtNum(m.fat_percent, 1) + '%' : ''}<button class="x" data-a="delMeasurement" data-d="${m.date}" aria-label="Verwijder">×</button></li>`).join('')}</ul></details>` : ''}
+    <p class="small muted">Je laatste gewicht wordt gebruikt voor oefeningen met lichaamsgewicht (pull-ups, dips).</p>
+  </section>`;
 }
 
 // ---------------------------------------------------------------- Profiel
@@ -508,8 +540,8 @@ function viewProfile() {
 
   <section class="card">
     <div class="card-h"><h3>Gegevens</h3></div>
-    <label class="btn full file-btn">📥 Importeer Hevy CSV<input type="file" accept=".csv,text/csv,text/plain" data-file="hevy" hidden></label>
-    <p class="small muted">In Hevy: Profiel → ⚙️ Instellingen → Export & Import Data → Export Workouts. Sla het bestand op in Bestanden en kies het hier.</p>
+    <label class="btn full file-btn">📥 Importeer Hevy CSV<input type="file" accept=".csv,text/csv,text/plain" data-file="hevy" multiple hidden></label>
+    <p class="small muted">In Hevy: Profiel → ⚙️ Instellingen → Export & Import Data → <b>Export Workouts</b> en/of <b>Export Measurements</b>. Sla ze op in Bestanden en kies ze hier (allebei tegelijk mag).</p>
     <button class="btn full" data-a="exportData">💾 Backup downloaden</button>
     <label class="btn full file-btn">♻️ Backup terugzetten<input type="file" accept=".json,application/json" data-file="backup" hidden></label>
     <p class="small muted">Je gegevens staan alleen op deze telefoon. Maak af en toe een backup en zet die in iCloud Drive.</p>
@@ -559,7 +591,7 @@ function pickerList() {
 function exerciseForm(e, addAfter) {
   const isNew = !e;
   e = e || { name: ui.picker.q || '', kind: 'weight', primary: [], secondary: [] };
-  const KINDS = { weight: 'Gewicht × reps', bw: 'Lichaamsgewicht', time: 'Tijd', cardio: 'Cardio' };
+  const KINDS = { weight: 'Gewicht', bw: 'Lichaams-gewicht', assisted: 'Met hulp', time: 'Tijd', cardio: 'Cardio' };
   const chips = (sel, role) => `<div class="chips wrap" data-role="${role}">${[...BODY, 'cardio'].map(m => `<button type="button" class="chip ${sel.includes(m) ? 'on' : ''}" data-m="${m}">${MUSCLES[m].name}</button>`).join('')}</div>`;
   openModal(`
     <h2>${isNew ? 'Eigen oefening' : 'Oefening bewerken'}</h2>
@@ -714,7 +746,7 @@ const A = {
     if (!s.done) {
       const p = previousSets(ex.exId)?.[j] || (j > 0 ? ex.sets[j - 1] : null);
       for (const [f] of COLS[e.kind] || COLS.weight) if (s[f] == null && p?.[f] != null) s[f] = p[f];
-      if (e.kind === 'weight' && s.kg == null && s.reps != null) s.kg = 0;
+      if (e.kind !== 'time' && e.kind !== 'cardio' && s.kg == null && s.reps != null) s.kg = 0;
       if (!setValid(e.kind, s)) return toast('Vul eerst de waarden in');
       s.done = true;
       if (S.state.settings.restOn) S.state.rest = { end: Date.now() + S.state.settings.restSeconds * 1000, total: S.state.settings.restSeconds * 1000 };
@@ -769,6 +801,14 @@ const A = {
       <button class="btn full" data-a="closeModal">Sluiten</button></div>`, 'center-sheet');
   },
   closeModal: () => closeModal(),
+  saveWeight: () => {
+    const w = num($('#weight-in').value), f = num($('#fat-in').value);
+    if (!w && !f) return toast('Vul je gewicht in');
+    const vals = {}; if (w) vals.weight_kg = w; if (f) vals.fat_percent = f;
+    S.setMeasurement(ui.weightDate || todayKey(), vals);
+    commit({ silent: true }); toast('⚖️ Opgeslagen');
+  },
+  delMeasurement: el => { if (!confirm('Meting verwijderen?')) return; S.state.measurements = S.state.measurements.filter(m => m.date !== el.dataset.d); S.syncBodyweight(); commit({ silent: true }); },
 
   exportData: () => {
     const blob = new Blob([JSON.stringify(S.state, null, 1)], { type: 'application/json' });
@@ -830,18 +870,34 @@ document.addEventListener('change', async e => {
     S.state.settings.quests[t.dataset.quest] = t.checked; commit({ silent: true });
   } else if ('statsex' in t.dataset) {
     ui.statsEx = t.value; render();
+  } else if ('weightdate' in t.dataset) {
+    ui.weightDate = t.value || todayKey();
   } else if (t.dataset.file && t.files?.[0]) {
-    const text = await t.files[0].text();
+    const files = [...t.files];
     t.value = '';
     try {
       if (t.dataset.file === 'hevy') {
-        const r = importHevy(text);
+        const parts = [];
+        let created = [];
+        for (const f of files) {
+          const text = await f.text();
+          const kind = csvKind(text);
+          if (kind === 'workouts') {
+            const r = importHevy(text);
+            created = created.concat(r.created);
+            parts.push(`<b>${r.added}</b> trainingen met <b>${r.sets}</b> sets${r.skipped ? ` (${r.skipped} bestonden al)` : ''}`);
+          } else if (kind === 'measurements') {
+            const r = importHevyMeasurements(text);
+            parts.push(`<b>${r.count}</b> meting(en)`);
+          } else parts.push(`${esc(f.name)}: niet herkend als Hevy-export`);
+        }
         commit({ silent: true });
         openModal(`<div class="levelup"><div class="lu-burst">📥</div><h2>Import klaar</h2>
-          <p><b>${r.added}</b> trainingen en <b>${r.sets}</b> sets geïmporteerd${r.skipped ? `, ${r.skipped} overgeslagen (bestonden al)` : ''}.</p>
-          ${r.created.length ? `<p class="small">${r.created.length} onbekende oefening(en) toegevoegd met gegokte spiergroepen. Controleer ze onder <b>Profiel → Eigen oefeningen</b>.</p>` : ''}
+          <p>${parts.join('<br>')}</p>
+          ${created.length ? `<p class="small">${created.length} onbekende oefening(en) toegevoegd met gegokte spiergroepen: ${created.map(e => esc(e.name)).join(', ')}. Controleer ze onder <b>Profiel → Eigen oefeningen</b>.</p>` : ''}
           <button class="btn primary full" data-a="closeModal">Top</button></div>`, 'center-sheet');
       } else {
+        const text = await files[0].text();
         const data = JSON.parse(text);
         if (!data || !data.settings || !Array.isArray(data.workouts)) throw new Error('Geen geldige LifeGame-backup');
         if (!confirm('Huidige gegevens vervangen door deze backup?')) return;

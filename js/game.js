@@ -33,6 +33,7 @@ export function setVolume(kind, s, bw) {
   switch (kind) {
     case 'weight': return (s.kg || 0) * s.reps;
     case 'bw': return (bw * 0.6 + (s.kg || 0)) * s.reps;
+    case 'assisted': return Math.max(0, bw * 0.6 - (s.kg || 0) * 0.6) * s.reps;
     case 'time': return s.sec * 5;
     case 'cardio': return (s.min || 0) * 50 + (s.km || 0) * 100;
   }
@@ -48,6 +49,7 @@ export function fmtSet(kind, s) {
   if (kind === 'time') return `${n(s.sec)} s`;
   if (kind === 'cardio') return [s.km ? `${n(s.km)} km` : '', s.min ? `${n(s.min)} min` : ''].filter(Boolean).join(' · ');
   if (kind === 'bw') return s.kg ? `+${n(s.kg)}kg × ${s.reps}` : `${s.reps} reps`;
+  if (kind === 'assisted') return s.kg ? `−${n(s.kg)}kg × ${s.reps}` : `${s.reps} reps`;
   return `${n(s.kg || 0)}kg × ${s.reps}`;
 }
 
@@ -110,7 +112,7 @@ export function computeAll() {
         const warm = s.type === 'warmup';
         st.sets++;
         const vol = setVolume(e.kind, s, S.bodyweight);
-        if (e.kind === 'weight' || e.kind === 'bw') { st.volume += vol; cur.volume += vol; }
+        if (e.kind !== 'time' && e.kind !== 'cardio') { st.volume += vol; cur.volume += vol; }
         if (e.kind === 'cardio') { st.cardioMin += s.min || 0; cur.km += s.km || 0; cur.min += s.min || 0; }
         const mx = vol / 10 * (warm ? 0.5 : 1);
         for (const m of e.primary) { st.muscleXp[m] = (st.muscleXp[m] || 0) + mx; if (date >= weekAgo) weekSets[m] += 1; }
@@ -119,7 +121,7 @@ export function computeAll() {
         if (e.kind === 'weight') {
           cur.maxKg = Math.max(cur.maxKg, s.kg || 0);
           cur.e1rm = Math.max(cur.e1rm, e1rm(s.kg, s.reps));
-        } else if (e.kind === 'bw') {
+        } else if (e.kind === 'bw' || e.kind === 'assisted') {
           cur.maxReps = Math.max(cur.maxReps, s.reps);
         } else if (e.kind === 'time') {
           cur.maxSec = Math.max(cur.maxSec, s.sec);
@@ -255,7 +257,7 @@ export function liveWorkoutXp(active, G) {
     }
     if (b) {
       if (e.kind === 'weight') { if (kg > b.maxKg) prs++; if (r > b.e1rm + 0.01) prs++; }
-      if (e.kind === 'bw' && reps > b.maxReps) prs++;
+      if ((e.kind === 'bw' || e.kind === 'assisted') && reps > b.maxReps) prs++;
       if (e.kind === 'time' && sec > b.maxSec) prs++;
     }
   }
@@ -267,7 +269,7 @@ export function setIsPr(exId, kind, s, G) {
   const b = G.bests[exId];
   if (!b || !s.done || s.type === 'warmup' || !setValid(kind, s)) return false;
   if (kind === 'weight') return (s.kg || 0) > b.maxKg || e1rm(s.kg, s.reps) > b.e1rm + 0.01;
-  if (kind === 'bw') return s.reps > b.maxReps;
+  if (kind === 'bw' || kind === 'assisted') return s.reps > b.maxReps;
   if (kind === 'time') return s.sec > b.maxSec;
   return false;
 }

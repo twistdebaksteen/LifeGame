@@ -25,6 +25,7 @@ function fresh() {
     workouts: [],        // afgeronde trainingen
     routines: [],
     customExercises: [],
+    measurements: [],    // { date, weight_kg, fat_percent, ..._cm }
     active: null,        // lopende training
     rest: null,          // { end, total }
     seenBadges: null,    // null = nog nooit berekend (geen meldingen bij eerste keer)
@@ -130,4 +131,17 @@ export function esc(s) {
 export function fmtNum(n, dec = 0) {
   if (n == null) return '–';
   return Number(n).toLocaleString('nl-NL', { maximumFractionDigits: dec });
+}
+
+// ---------- metingen ----------
+export function setMeasurement(date, values) {
+  let m = state.measurements.find(x => x.date === date);
+  if (!m) { m = { date }; state.measurements.push(m); }
+  Object.assign(m, values);
+  state.measurements.sort((a, b) => a.date.localeCompare(b.date));
+  syncBodyweight();
+}
+export function syncBodyweight() {
+  const withW = state.measurements.filter(m => m.weight_kg > 0);
+  if (withW.length) state.settings.bodyweight = withW[withW.length - 1].weight_kg;
 }

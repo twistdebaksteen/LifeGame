@@ -18,7 +18,7 @@ export const MUSCLES = {
 };
 
 // kind: weight = kg × reps, bw = lichaamsgewicht (+ extra kg) × reps,
-//       time = seconden, cardio = km + minuten
+//       assisted = lichaamsgewicht min hulpgewicht × reps, time = seconden, cardio = km + minuten
 // [naam, primair, secundair, kind]
 const RAW = [
   ['Bench Press (Barbell)', ['chest'], ['triceps', 'shoulders'], 'weight'],
@@ -104,6 +104,36 @@ const RAW = [
   ['Ab Wheel', ['abs'], ['lowerback'], 'bw'],
   ['Plank', ['abs'], ['lowerback'], 'time'],
 
+  // Extra varianten (o.a. uit Hevy)
+  ['Chest Fly (Machine)', ['chest'], ['shoulders'], 'weight'],
+  ['Iso-Lateral Chest Press (Machine)', ['chest'], ['triceps', 'shoulders'], 'weight'],
+  ['Incline Chest Press (Machine)', ['chest'], ['shoulders', 'triceps'], 'weight'],
+  ['Bench Press (Smith Machine)', ['chest'], ['triceps', 'shoulders'], 'weight'],
+  ['Overhead Press (Dumbbell)', ['shoulders'], ['triceps'], 'weight'],
+  ['Shoulder Press (Machine Plates)', ['shoulders'], ['triceps'], 'weight'],
+  ['Seated Shoulder Press (Machine)', ['shoulders'], ['triceps'], 'weight'],
+  ['Rear Delt Reverse Fly (Machine)', ['shoulders'], ['traps'], 'weight'],
+  ['Rear Delt Reverse Fly (Cable)', ['shoulders'], ['traps'], 'weight'],
+  ['Iso-Lateral Row (Machine)', ['back'], ['biceps', 'traps'], 'weight'],
+  ['Iso-Lateral High Row (Machine)', ['back'], ['biceps', 'traps'], 'weight'],
+  ['Meadows Rows (Barbell)', ['back'], ['biceps', 'traps'], 'weight'],
+  ['Pull Up (Assisted)', ['back'], ['biceps'], 'assisted'],
+  ['Chin Up (Assisted)', ['back'], ['biceps'], 'assisted'],
+  ['Triceps Dip (Assisted)', ['triceps'], ['chest', 'shoulders'], 'assisted'],
+  ['Dead Hang', ['forearms'], ['back'], 'time'],
+  ['Preacher Curl (Machine)', ['biceps'], [], 'weight'],
+  ['Preacher Curl (Dumbbell)', ['biceps'], [], 'weight'],
+  ['Seated Incline Curl (Dumbbell)', ['biceps'], ['forearms'], 'weight'],
+  ['Reverse Curl (Barbell)', ['forearms'], ['biceps'], 'weight'],
+  ['Single Arm Triceps Pushdown (Cable)', ['triceps'], [], 'weight'],
+  ['Wrist Roller', ['forearms'], [], 'weight'],
+  ['Crunch (Machine)', ['abs'], [], 'weight'],
+  ['Knee Raise Parallel Bars', ['abs'], [], 'bw'],
+  ['Leg Press Horizontal (Machine)', ['quads'], ['glutes', 'hamstrings'], 'weight'],
+  ['Squat (Smith Machine)', ['quads'], ['glutes', 'hamstrings'], 'weight'],
+  ['Standing Calf Raise (Smith)', ['calves'], [], 'weight'],
+  ['Standing Calf Raise (Dumbbell)', ['calves'], [], 'weight'],
+
   ['Running', ['cardio'], ['quads', 'calves'], 'cardio'],
   ['Treadmill', ['cardio'], ['quads', 'calves'], 'cardio'],
   ['Cycling', ['cardio'], ['quads'], 'cardio'],
@@ -123,21 +153,23 @@ export const EXERCISES = RAW.map(([name, primary, secondary, kind]) => ({
 // Gok spiergroepen op basis van de naam (voor geïmporteerde onbekende oefeningen).
 const GUESS = [
   [/calf/, ['calves'], [], 'weight'],
-  [/plank|hold/, ['abs'], [], 'time'],
-  [/run|cycl|bike|row(ing)? machine|walk|elliptical|stair|swim|jump rope/, ['cardio'], [], 'cardio'],
-  [/crunch|sit ?up|leg raise|ab |abs|oblique|twist/, ['abs'], [], 'bw'],
+  [/\bplank|\bhold\b|\bhang\b/, ['abs'], [], 'time'],
+  [/\brun(ning)?\b|\bcycl|\bbike|rowing|\bwalk|elliptical|stair|swim|jump rope|treadmill/, ['cardio'], [], 'cardio'],
+  [/crunch|sit ?up|leg raise|knee raise|\bab\b|\babs\b|oblique|twist|v ?up/, ['abs'], [], 'bw'],
+  [/romanian|stiff leg/, ['hamstrings'], ['glutes', 'lowerback'], 'weight'],
   [/deadlift/, ['hamstrings', 'glutes', 'lowerback'], ['back'], 'weight'],
-  [/hip thrust|glute|abduct|kickback/, ['glutes'], ['hamstrings'], 'weight'],
+  [/hip thrust|glute|abduct|donkey/, ['glutes'], ['hamstrings'], 'weight'],
   [/leg curl|hamstring|nordic/, ['hamstrings'], [], 'weight'],
-  [/squat|leg press|lunge|leg extension|step up|adduct/, ['quads'], ['glutes'], 'weight'],
+  [/squat|leg press|lunge|leg extension|step ?up|adduct|split/, ['quads'], ['glutes'], 'weight'],
   [/shrug/, ['traps'], [], 'weight'],
+  [/rear delt|reverse fly|face pull/, ['shoulders'], ['traps'], 'weight'],
   [/skull|tricep|pushdown|close grip|kickback/, ['triceps'], [], 'weight'],
+  [/wrist|grip|farmer|reverse curl/, ['forearms'], [], 'weight'],
   [/curl/, ['biceps'], ['forearms'], 'weight'],
-  [/wrist|grip|farmer/, ['forearms'], [], 'weight'],
-  [/pull ?up|chin ?up|pulldown|row|pullover/, ['back'], ['biceps'], 'weight'],
-  [/bench|chest|fly|pec|push ?up|dip/, ['chest'], ['triceps', 'shoulders'], 'weight'],
-  [/shoulder|overhead|military|lateral|raise|delt|face pull|arnold/, ['shoulders'], ['triceps'], 'weight'],
-  [/back extension|hyperextension|good morning/, ['lowerback'], ['glutes'], 'bw'],
+  [/pull ?up|chin ?up|pulldown|\brows?\b|pullover/, ['back'], ['biceps'], 'weight'],
+  [/bench|chest|\bfly|flye|pec|push ?up|\bdip/, ['chest'], ['triceps', 'shoulders'], 'weight'],
+  [/shoulder|overhead|military|lateral raise|front raise|delt|arnold|upright/, ['shoulders'], ['triceps'], 'weight'],
+  [/back extension|hyperextension|good morning|superman/, ['lowerback'], ['glutes'], 'bw'],
 ];
 
 export function guessExercise(name, hint = {}) {
@@ -145,12 +177,13 @@ export function guessExercise(name, hint = {}) {
   for (const [re, primary, secondary, kind] of GUESS) {
     if (re.test(n)) {
       let k = kind;
-      if (hint.hasDistance || (hint.hasDuration && !hint.hasReps)) k = hint.hasDistance ? 'cardio' : 'time';
+      if (/assist/.test(n)) k = 'assisted';
+      else if (hint.hasDistance || (hint.hasDuration && !hint.hasReps)) k = hint.hasDistance ? 'cardio' : 'time';
       else if (k === 'bw' && hint.hasWeight) k = 'weight';
       return { primary, secondary, kind: k };
     }
   }
-  let kind = 'weight';
+  let kind = /assist/.test(n) ? 'assisted' : 'weight';
   if (hint.hasDistance) kind = 'cardio';
   else if (hint.hasDuration && !hint.hasReps) kind = 'time';
   return { primary: [], secondary: [], kind };
