@@ -1,0 +1,35 @@
+# Instellingen van de tradebot. Alle tijden zijn UTC (Nederland = UTC+1, zomer UTC+2).
+
+[exchange]
+id = "myokx"          # OKX voor Europa (eea.okx.com). Gebruik "okx" voor een niet-Europees OKX-account.
+symbol = "BTC/EUR"    # handelspaar
+timeframe = "5m"      # candle-grootte
+fee_rate = 0.0015     # takerfee per order (0,15%). Controleer je eigen tarief op OKX.
+slippage = 0.0005     # aangenomen slippage in backtest/paper (0,05%)
+
+[capital]
+start_eur = 100.0         # maximaal budget dat de bot ooit gebruikt
+position_fraction = 0.98  # deel van het budget per trade
+
+[strategy]
+ema_fast = 9
+ema_slow = 21
+ema_trend = 100           # alleen kopen boven deze trendlijn
+rsi_period = 14
+rsi_min = 50              # alleen kopen bij RSI tussen min en max
+rsi_max = 70
+stop_loss_pct = 1.0       # verkoop bij 1% verlies
+take_profit_pct = 2.0     # verkoop bij 2% winst
+max_hold_bars = 48        # verkoop na maximaal 48 candles (4 uur bij 5m)
+
+[risk]
+max_daily_loss_eur = 5.0       # na 5 EUR verlies op een dag: geen nieuwe trades meer die dag
+max_total_loss_eur = 20.0      # na 20 EUR totaal verlies: bot stopt volledig
+max_trades_per_day = 8
+cooldown_bars_after_loss = 6   # na een verliestrade 6 candles wachten
+no_entry_after_utc = "23:00"   # geen nieuwe trades meer na dit tijdstip
+flatten_at_utc = "23:50"       # alle posities sluiten (day trading: niets overnacht). "" = uit
+
+[runtime]
+poll_seconds = 15     # hoe vaak de koers gecontroleerd wordt
+dir = "runtime"       # map voor status, logs en tradelijsten
