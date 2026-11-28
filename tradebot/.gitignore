@@ -1,7 +1,0 @@
-.env
-runtime/
-data/
-STOP
-__pycache__/
-.pytest_cache/
-.venv/

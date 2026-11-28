@@ -1,1 +1,0 @@
-"""OKX day trade bot."""
